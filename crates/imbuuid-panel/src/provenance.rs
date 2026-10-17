@@ -39,20 +39,21 @@ pub fn provenance_short() -> String {
     PROVENANCE_UUID.chars().take(8).collect()
 }
 
-/// Print full provenance: canonical crate-API surface first, raw constants
-/// second. Used by `--provenance`.
+/// Print full provenance: this binary's OWN embedded provenance first
+/// (env! expands at this crate's compile time), then the transitively-linked
+/// imbuuid-mem library's provenance. Used by `--provenance`.
 pub fn print_provenance() {
-    println!("imbuuid-panel binary provenance (via imbuuid_mem::provenance::binary_provenance):");
-    match imbuuid_mem::provenance::binary_provenance() {
-        Some(bp) => println!("{:#?}", bp),
-        None => println!("<none: build script did not emit provenance env>"),
-    }
-    println!("embedded constants:");
+    println!("imbuuid-panel binary provenance (own build):");
     println!("  IMBUUID_PROVENANCE_UUID  = {}", PROVENANCE_UUID);
     println!("  IMBUUID_SOURCE_TREE_HASH = {}", SOURCE_TREE_HASH);
     println!("  IMBUUID_BUILD_TIMESTAMP  = {}", BUILD_TIMESTAMP);
     println!("  IMBUUID_BUILDER          = {}", BUILDER);
     println!("  record line              = {}", provenance_record());
+    println!("linked imbuuid-mem library provenance (transitive):");
+    match imbuuid_mem::provenance::binary_provenance() {
+        Some(bp) => println!("{:#?}", bp),
+        None => println!("<none: build script did not emit provenance env>"),
+    }
 }
 
 #[cfg(test)]

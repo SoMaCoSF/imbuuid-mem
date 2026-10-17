@@ -1,0 +1,118 @@
+[
+  {
+    "inputs": {
+      "type_code": 1024,
+      "namespace": 1450,
+      "namespace_label": "test-ns",
+      "timestamp_sec": 1760000000,
+      "fractal_depth": 0,
+      "fractal_domain": 0,
+      "fractal_generation": 0,
+      "signal": 0.5,
+      "provenance": 2,
+      "rand42": 2932031007403
+    },
+    "uuid": "4005aae7-7800-8000-89ff-feaaaaaaaaab",
+    "decoded": {
+      "type_code": 1024,
+      "namespace": 1450,
+      "timestamp_sec": 15169536,
+      "version": 8,
+      "fractal_depth": 0,
+      "fractal_domain": 0,
+      "fractal_generation": 0,
+      "variant": 2,
+      "provenance": 2,
+      "signal_raw": 32767,
+      "signal_normalized": 0.49999237048905165,
+      "random": 2932031007403
+    }
+  },
+  {
+    "inputs": {
+      "type_code": 512,
+      "namespace": 400,
+      "namespace_label": "turboquant:llama3-70b:layer7",
+      "timestamp_sec": 1760000001,
+      "fractal_depth": 0,
+      "fractal_domain": 6,
+      "fractal_generation": 0,
+      "signal": 0.84,
+      "provenance": 8,
+      "rand42": 2932031007403
+    },
+    "uuid": "200190e7-7801-8060-a35c-26aaaaaaaaab",
+    "decoded": {
+      "type_code": 512,
+      "namespace": 400,
+      "timestamp_sec": 15169537,
+      "version": 8,
+      "fractal_depth": 0,
+      "fractal_domain": 6,
+      "fractal_generation": 0,
+      "variant": 2,
+      "provenance": 8,
+      "signal_raw": 55049,
+      "signal_normalized": 0.8399938963912413,
+      "random": 2932031007403
+    }
+  },
+  {
+    "inputs": {
+      "type_code": 928,
+      "namespace": 2953,
+      "namespace_label": "polymarket:trump-2028",
+      "timestamp_sec": 1760000002,
+      "fractal_depth": 0,
+      "fractal_domain": 1,
+      "fractal_generation": 0,
+      "signal": 1.0,
+      "provenance": 7,
+      "rand42": 2932031007403
+    },
+    "uuid": "3a0b89e7-7802-8010-9fff-feaaaaaaaaab",
+    "decoded": {
+      "type_code": 928,
+      "namespace": 2953,
+      "timestamp_sec": 15169538,
+      "version": 8,
+      "fractal_depth": 0,
+      "fractal_domain": 1,
+      "fractal_generation": 0,
+      "variant": 2,
+      "provenance": 7,
+      "signal_raw": 65535,
+      "signal_normalized": 1.0,
+      "random": 2932031007403
+    }
+  },
+  {
+    "inputs": {
+      "type_code": 929,
+      "namespace": 2309,
+      "namespace_label": "polymarket:quote:trump-2028",
+      "timestamp_sec": 1760000003,
+      "fractal_depth": 1,
+      "fractal_domain": 1,
+      "fractal_generation": 0,
+      "signal": 0.17,
+      "provenance": 7,
+      "rand42": 2932031007403
+    },
+    "uuid": "3a1905e7-7803-8110-9cae-12aaaaaaaaab",
+    "decoded": {
+      "type_code": 929,
+      "namespace": 2309,
+      "timestamp_sec": 15169539,
+      "version": 8,
+      "fractal_depth": 1,
+      "fractal_domain": 1,
+      "fractal_generation": 0,
+      "variant": 2,
+      "provenance": 7,
+      "signal_raw": 11140,
+      "signal_normalized": 0.16998550392919815,
+      "random": 2932031007403
+    }
+  }
+]

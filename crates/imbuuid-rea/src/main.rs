@@ -36,19 +36,21 @@ static PROVENANCE_RECORD: &str = concat!(
 );
 
 fn print_own_provenance() {
-    // Surface through the imbuuid-mem crate API (canonical path) …
-    println!("imbuuid-rea binary provenance (via imbuuid_mem::provenance::binary_provenance):");
-    match imbuuid_mem::provenance::binary_provenance() {
-        Some(bp) => println!("{:#?}", bp),
-        None => println!("<none: build script did not emit provenance env>"),
-    }
-    // … and the raw embedded constants (what the REA extractor itself reads).
-    println!("embedded constants:");
+    // This binary's OWN provenance first (env! expands at this crate's
+    // compile time) …
+    println!("imbuuid-rea binary provenance (own build):");
     println!("  IMBUUID_PROVENANCE_UUID  = {}", PROVENANCE_UUID);
     println!("  IMBUUID_SOURCE_TREE_HASH = {}", SOURCE_TREE_HASH);
     println!("  IMBUUID_BUILD_TIMESTAMP  = {} ({})", BUILD_TIMESTAMP, format_utc(BUILD_TIMESTAMP.parse().unwrap_or(0)));
     println!("  IMBUUID_BUILDER          = {}", BUILDER);
     println!("  record line              = {}", PROVENANCE_RECORD);
+    // … then the transitively-linked library's (env! inside the rlib baked
+    // the rlib's own build env — that transitivity is a feature, not a bug).
+    println!("linked imbuuid-mem library provenance (transitive):");
+    match imbuuid_mem::provenance::binary_provenance() {
+        Some(bp) => println!("{:#?}", bp),
+        None => println!("<none: build script did not emit provenance env>"),
+    }
 }
 
 fn usage() -> String {
