@@ -1,0 +1,19 @@
+# SOM-DOC-10435 (part) — imbuuid-rea manifest.
+[package]
+name = "imbuuid-rea"
+version = "0.1.0"
+edition = "2021"
+description = "REA-loop provenance extractor: regex-scans binary bytes for GYST UUIDv8 TYPE_BINARY_PROVENANCE (0x403) records and decodes them into timestamped proof"
+license = "MIT"
+authors = ["SoMaCoSF"]
+
+[dependencies]
+imbuuid-mem = { path = "../imbuuid-mem" }
+regex = "1"
+chrono = "0.4"
+
+[build-dependencies]
+# NOTE (2026-10-17): task spec says sha2 = "1", but no 1.x exists on
+# crates.io (index tops at 0.11.1); 0.11 carries the identical Digest API
+# the provenance script needs. Deviated to resolve; flagged in report.
+sha2 = "0.11"

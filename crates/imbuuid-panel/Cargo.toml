@@ -1,0 +1,26 @@
+# SOM-DOC-10435 (part) — imbuuid-panel manifest.
+[package]
+name = "imbuuid-panel"
+version = "0.1.0"
+edition = "2021"
+description = "Standalone UUID-panel-canvas memory panel (ratatui): store stats, live attestation feed, memory detail, install funnel tile"
+license = "MIT"
+authors = ["SoMaCoSF"]
+
+[dependencies]
+imbuuid-mem = { path = "../imbuuid-mem" }
+ratatui = "0.29"
+crossterm = "0.28"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+tracing-appender = "0.2"
+open = "5"
+chrono = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[build-dependencies]
+# NOTE (2026-10-17): task spec says sha2 = "1", but no 1.x exists on
+# crates.io (index tops at 0.11.1); 0.11 carries the identical Digest API
+# the provenance script needs. Deviated to resolve; flagged in report.
+sha2 = "0.11"
