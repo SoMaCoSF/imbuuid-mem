@@ -4,6 +4,8 @@
 // Usage: imbuuid-panel [--snapshot <path>] [--provenance] [--help]
 // Logging: tracing to ~/.imbuuid/panel.log (file only, never stdout).
 
+mod browser;
+mod dossier;
 mod provenance;
 mod store;
 mod ui;
@@ -38,7 +40,7 @@ fn usage() -> &'static str {
      imbuuid-panel --provenance          print this binary's embedded provenance\n  \
      imbuuid-panel --help                this text\n\
      \n\
-     Keys: q/Esc quit · i install funnel · ↑↓/jk select · PgUp/PgDn feed.\n\
+     Keys: q/Esc quit · i install funnel · b uuid browser · d dossier · ↑↓/jk select · PgUp/PgDn feed.\n\
      Log: ~/.imbuuid/panel.log (file only)."
 }
 

@@ -111,7 +111,8 @@ agree to the second (verified 2026-10-17, §4).
 
 - **Header KPI strip** — title, short provenance id, builder, clock.
 - **Tile row** — STORE STATS (memories · attestations · dedup collapses ·
-  namespaces) · NAMESPACES · **GET IMBUE install tile** (gold, prominent).
+  namespaces) · NAMESPACES · **UUID BROWSER** (`b` / click) · **DOSSIER**
+  (`d` / click) · **GET IMBUE install tile** (gold, prominent).
 - **Witness attestation feed** — last N, newest-first, simulated live
   heartbeat tick every 3 s (documented; seam for the real witness stream).
 - **Memories | memory detail** — arrow/j/k navigation, UUID · namespace ·
@@ -227,3 +228,129 @@ found"; missing path → exit 2; no args → exit 2 with usage.
   simulated tick. Also: Crew 2's `imbuuid-tui` needs porting off its
   shim-guessed APIs (76 errors vs the real crate) before
   `cargo test --workspace` goes green.
+
+## 7. UUID browser + contextual dossier (Crew 4, 2026-10-17)
+
+`imbuuid-panel` gained two tiles in the panel chrome: **UUID BROWSER** (`b`)
+and **DOSSIER** (`d`), wired into the same hex-canvas aesthetic (⬡ titles,
+double-line borders, gold reserved for live/selected).
+
+### 7.1 UUID browser — browse → decode → resolve → render
+
+Doctrine: the UUID is the address; the panel resolves and renders. Three
+UUID sources, one decode path (`imbuuid_mem::gyst::decode_gyst`), one
+resolution per record kind:
+
+```mermaid
+flowchart LR
+    SRC{"source"}
+    SRC -->|"store"| L1["memories + prompt fingerprints<br/>(StoreSnapshot)"]
+    SRC -->|"dossier-file"| L2["open .md → UUIDv8 regex extract"]
+    SRC -->|"paste"| L3["manual UUID entry"]
+    L1 --> DEC["decode_gyst()<br/>version==8 && variant==2"]
+    L2 --> DEC
+    L3 --> DEC
+    DEC -->|"type field"| RES{"resolve"}
+    RES -->|"0x400 + local record"| M["memory: content · hash · attestations · receipts · prompt links"]
+    RES -->|"0x401 + links"| P["prompt: linked memories"]
+    RES -->|"0x402 + feed hits"| A["attestation: feed entries (kind/count/receipt live on the witness plane)"]
+    RES -->|"decodes, no local record"| H["HONEST MISS:<br/>no local record — the UUID is the address,<br/>but nothing is stored at it here"]
+    RES -->|"not v8"| E["decode error, shown plainly"]
+    M --> REN["render decode fields:<br/>type · ns · UTC (ts24 window-fit) · prov · signal · fractal sector"]
+    P --> REN
+    A --> REN
+    H --> REN
+    E --> REN
+```
+
+Notes:
+
+- The scan regex pins the v8 contract (`8` version nibble, `[89ab]`
+  variant) — the same contract as the imbuuid-rea extractor; a non-v8
+  string cannot enter from the dossier-file or store paths.
+- Decoded fields: type code named via the contract consts (`MEMORY`,
+  `PROMPT`, `ATTESTATION`, `BINARY_PROVENANCE`, …), namespace `0xNNN`,
+  timestamp as human UTC with the 24-bit field explicitly labelled
+  "ts24 window-fit" (~194-day wrap, nearest-window reconstruction —
+  same convention as §2), provenance named (`CLI`, `AGENT`, …),
+  signal, fractal sector `0xDDD` (depth · domain · generation).
+- Store resolution goes through **defaulted `StoreSnapshot` trait
+  methods** (`lookup_memory`, `attestations_for`, `prompt_fingerprints`,
+  `prompt_links`) — existing implementors don't break; `InMemoryStore`
+  also gained a `prompts: Vec<PromptRef>` field (serde-defaulted, so old
+  JSON snapshots still load) seeded with four real TYPE_PROMPT
+  fingerprints linked to memories.
+- The seeded demo UUIDs are now **real TYPE_MEMORY v8 mints** via
+  `encode_gyst` (namespace = `fnv1a12(label)`, ts = created, prov =
+  CLI) — previously v8-shaped fixtures with a `0x540` type field, which
+  the browser correctly refused to call MEMORY. Demo data stays
+  deterministic; the honest-miss path is exercised by pasting any
+  unknown-but-valid v8 UUID (`p` in the browser).
+
+Keys in the browser: `Tab` cycles source · `↑↓` select · `Enter` resolves
+· `p` pastes a UUID · `o` types a dossier `.md` path and loads it ·
+`Esc` closes (or cancels the editor). Tiles are clickable like the
+install tile.
+
+### 7.2 Contextual dossier — compile → preview → publish (SOM-DOC-10439)
+
+`d` compiles from the current scope and opens an in-panel preview:
+
+```mermaid
+flowchart LR
+    MEM["UUID-keyed memory records<br/>(chronological)"] --> CMP["compile_dossier()"]
+    ATT["witness attestations<br/>(receipts)"] --> CMP
+    MED["~/.imbuuid/captures<br/>~/.imbuuid/snapshots<br/>(at capture ts, if present)"] --> CMP
+    CMP --> PV["preview in panel<br/>(scroll, operator trims)"]
+    PV -->|"p"| PUB{"PUBLISH — explicit choice"}
+    PUB -->|"Gist"| G["gh gist create (private)<br/>— or outbox on any failure"]
+    PUB -->|"Repo"| R["docs/dossier/&lt;slug&gt;.md<br/>under IMBUUID_DOSSIER_REPO"]
+    PUB -->|"Cancel (default)"| X["back to preview"]
+```
+
+Laws enforced in code, not comments:
+
+- **No fabrication:** every dossier entry cites a record UUID; gaps >
+  6 h render as explicit "gap of Nh" lines; unattested records are
+  labelled UNATTESTED. `dossier_compiles_only_record_backed_entries`
+  asserts every entry's UUID exists in the store.
+- **Docs standard at publish:** the PUBLISH step verifies the Ghost
+  Catalog header (`file_id:`) and a mermaid block exist, and refuses
+  otherwise (`validate_dossier_payload`).
+- **No silent network, ever:** Gist posts ONLY via `gh gist create`
+  after the operator explicitly chose Gist in the dialog (Cancel is the
+  default selection, keyboard and mouse). If `gh` is missing, fails, or
+  `IMBUUID_DOSSIER_NO_GIST=1`, the exact payload goes to
+  `~/.imbuuid/dossier-outbox/<slug>.md` (overridable via
+  `IMBUUID_DOSSIER_OUTBOX`) and the dialog reports precisely what
+  happened. Tests cover the outbox path and assert a Gist is never
+  posted without the explicit confirm.
+- Tracing: compile/publish events go to `~/.imbuuid/panel.log`.
+
+New modules: `crates/imbuuid-panel/src/browser.rs` (source → decode →
+resolve → render), `crates/imbuuid-panel/src/dossier.rs` (compile →
+preview → publish). Both carry `// SOM-DOC-10435 (part)` Ghost headers.
+
+### 7.3 Verification (2026-10-17, Crew 4)
+
+`cargo test -p imbuuid-mem -p imbuuid-panel -p imbuuid-rea`: **64 passed,
+0 failed** (mem 19 unit + 3 integration · panel 36 · rea 6), exit 0 —
+only the intentional build-script provenance announcements on stderr.
+(Crew 2's `imbuuid-tui` still does not compile against the real crate —
+unchanged from §4/§6, not this crew's scope.)
+
+Test coverage added: UUID extraction from a sample dossier `.md`
+(incl. v4 rejection + dedupe), decode+resolve round-trip for a memory
+record, the honest-miss case (decoded fields render, nothing invented),
+prompt→linked-memories resolution, dossier compile containing only
+record-backed entries (chronological, gaps as gaps), payload
+header+mermaid validation (refusal cases), publish dialog defaulting to
+Cancel with zero network, and the outbox path under
+`IMBUUID_DOSSIER_NO_GIST=1`.
+
+Open / stubbed: live-store wiring for the panel (`StoreSnapshot` impl
+over Crew 1's store — the seam is ready) and the real witness heartbeat
+replacing the 3 s simulated tick (unchanged from §6). The panel
+snapshot plane carries no per-record observation count — the dossier
+and browser show attestation counts + receipt lines instead, labelled
+honestly.

@@ -32,6 +32,15 @@ pub struct Attestation {
     pub ts_sec: u64,
 }
 
+/// A prompt fingerprint the panel knows about: the TYPE_PROMPT UUID plus
+/// the memory UUIDs it was linked to. Carries no prompt text (privacy).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromptRef {
+    pub uuid: String,
+    pub provenance: u8,
+    pub linked_memory_uuids: Vec<String>,
+}
+
 /// Aggregate numbers for the stats tile.
 #[derive(Debug, Clone)]
 pub struct StoreStats {
@@ -52,6 +61,34 @@ pub trait StoreSnapshot {
         let start = a.len().saturating_sub(n);
         a[start..].iter().rev().collect()
     }
+
+    // ---- crew4 resolution seam (defaulted: existing impls don't break) ----
+    /// Find a memory record by exact UUID.
+    fn lookup_memory(&self, uuid: &str) -> Option<&MemoryEntry> {
+        self.memories().iter().find(|m| m.uuid == uuid)
+    }
+    /// Attestations referencing this UUID.
+    fn attestations_for(&self, uuid: &str) -> Vec<&Attestation> {
+        self.attestations()
+            .iter()
+            .filter(|a| a.memory_uuid == uuid)
+            .collect()
+    }
+    /// Known prompt fingerprints (default: none).
+    fn prompt_fingerprints(&self) -> Vec<&PromptRef> {
+        Vec::new()
+    }
+    /// Memory UUIDs linked from a prompt fingerprint (default: via
+    /// prompt_fingerprints, so overriding the one above is enough).
+    fn prompt_links(&self, prompt_uuid: &str) -> Vec<&str> {
+        let mut out = Vec::new();
+        for p in self.prompt_fingerprints() {
+            if p.uuid == prompt_uuid {
+                out.extend(p.linked_memory_uuids.iter().map(|s| s.as_str()));
+            }
+        }
+        out
+    }
 }
 
 fn now_sec() -> u64 {
@@ -69,11 +106,15 @@ pub struct InMemoryStore {
     pub dedup_collapses: u64,
     #[serde(default)]
     pub demo: bool,
+    /// Prompt fingerprints known to the panel (browser source).
+    #[serde(default)]
+    pub prompts: Vec<PromptRef>,
 }
 
 impl InMemoryStore {
     /// Deterministic demo seed. Timestamps anchor at load time so the feed
-    /// always looks alive; UUIDs are fixed v8-shaped fixtures.
+    /// always looks alive; UUIDs are real TYPE_MEMORY v8 mints (via
+    /// imbuuid-mem's gyst codec) so the UUID browser decodes them honestly.
     pub fn seeded() -> Self {
         let now = now_sec();
         let ns = ["agent:planner", "agent:researcher", "witness:ledger"];
@@ -94,22 +135,29 @@ impl InMemoryStore {
         let memories: Vec<MemoryEntry> = summaries
             .iter()
             .enumerate()
-            .map(|(i, s)| MemoryEntry {
-                uuid: format!(
-                    "5{:03x}{:04x}-{:04x}-8{:03x}-{:04x}-{:012x}",
-                    0x400 + (i % 4),
-                    0x1000 + i * 37,
-                    0x2000 + i * 91,
-                    0x100 + i * 13,
-                    0x8000 + i * 7,
-                    0xabc000 + i * 0x1111
-                ),
-                namespace: ns[i % ns.len()].to_string(),
-                content_hash: format!("{:064x}", 0xdeadbeef_u64.wrapping_add(i as u64 * 0x9e37)),
-                signal: 0.55 + (i as f64 * 0.037) % 0.45,
-                attestations: 2 + (i as u32 % 5),
-                created_sec: now - (i as u64 * 1400 + 300),
-                summary: s.to_string(),
+            .map(|(i, s)| {
+                let created = now - (i as u64 * 1400 + 300);
+                let ns_label = ns[i % ns.len()];
+                let signal = 0.55 + (i as f64 * 0.037) % 0.45;
+                MemoryEntry {
+                    uuid: imbuuid_mem::gyst::encode_gyst(
+                        imbuuid_mem::gyst::TYPE_MEMORY,
+                        imbuuid_mem::gyst::fnv1a12(ns_label),
+                        created,
+                        (i % 16) as u8,
+                        ((i / 4) % 16) as u8,
+                        0,
+                        signal as f32,
+                        imbuuid_mem::gyst::PROV_CLI,
+                        0xabc000 + i as u64 * 0x1111,
+                    ),
+                    namespace: ns_label.to_string(),
+                    content_hash: format!("{:064x}", 0xdeadbeef_u64.wrapping_add(i as u64 * 0x9e37)),
+                    signal,
+                    attestations: 2 + (i as u32 % 5),
+                    created_sec: created,
+                    summary: s.to_string(),
+                }
             })
             .collect();
 
@@ -125,11 +173,28 @@ impl InMemoryStore {
             })
             .collect();
 
+        // Prompt fingerprints (TYPE_PROMPT, content-addressed) linked to the
+        // first memories — the UUID browser's prompt→memories source.
+        let prompts: Vec<PromptRef> = (0..4)
+            .map(|i| {
+                let uuid = imbuuid_mem::prompt::fingerprint_prompt(
+                    &format!("seeded browser probe prompt {}", i),
+                    imbuuid_mem::gyst::PROV_CLI,
+                );
+                PromptRef {
+                    uuid,
+                    provenance: imbuuid_mem::gyst::PROV_CLI,
+                    linked_memory_uuids: vec![memories[i % memories.len()].uuid.clone()],
+                }
+            })
+            .collect();
+
         InMemoryStore {
             memories,
             attestations,
             dedup_collapses: 7,
             demo: true,
+            prompts,
         }
     }
 
@@ -192,6 +257,10 @@ impl StoreSnapshot for InMemoryStore {
     fn memories(&self) -> &[MemoryEntry] {
         &self.memories
     }
+
+    fn prompt_fingerprints(&self) -> Vec<&PromptRef> {
+        self.prompts.iter().collect()
+    }
 }
 
 #[cfg(test)]
@@ -211,7 +280,7 @@ mod tests {
         let feed = s.feed(5);
         assert_eq!(feed.len(), 5);
         assert!(feed[0].ts_sec >= feed[1].ts_sec);
-        // Memory UUIDs are v8-shaped fixtures.
+        // Memory UUIDs are real TYPE_MEMORY v8 mints.
         for m in &s.memories {
             assert_eq!(m.uuid.len(), 36, "{}", m.uuid);
             assert_eq!(&m.uuid[14..15], "8", "version nibble: {}", m.uuid);
