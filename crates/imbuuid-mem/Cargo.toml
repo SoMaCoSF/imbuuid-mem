@@ -1,0 +1,27 @@
+[package]
+name = "imbuuid-mem"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "UUID-substrate memory layer for AI agents — local-first GYST UUIDv8 codec, content-hash dedup store, Witness attestation, prompt fingerprints, frequency-weighted retrieval"
+
+[lib]
+name = "imbuuid_mem"
+
+# NOTE: several pinned majors from the task brief do not exist on crates.io
+# (no sha2 1.x / hmac 1.x / tracing 1.x / getrandom 1.x as of 2026-10-17).
+# Pinned to the real current stables; APIs used here are identical.
+[dependencies]
+sha2 = "0.10"
+# hmac 0.13 requires digest 0.11 which sha2 0.10 does not implement;
+# 0.12 pairs with sha2 0.10 (same Hmac API).
+hmac = "0.12"
+tracing = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+getrandom = "0.4"
+
+[build-dependencies]
+sha2 = "0.10"

@@ -1,0 +1,13 @@
+[workspace]
+members = [
+    "crates/imbuuid-mem",
+    "crates/imbuuid-tui",
+    "crates/imbuuid-panel",
+    "crates/imbuuid-rea",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+authors = ["SoMaCoSF"]
